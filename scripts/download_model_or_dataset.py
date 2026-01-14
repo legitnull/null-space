@@ -189,7 +189,7 @@ Note: For private repositories, set HF_TOKEN environment variable:
     parser.add_argument(
         "--output_dir",
         type=str,
-        required=True,
+        required=False,
         help=(
             "Base output directory (repository will be saved to output_dir/repo_id, "
             "e.g., '~/models' -> '~/models/lerobot/pi0_base')"
@@ -214,8 +214,9 @@ Note: For private repositories, set HF_TOKEN environment variable:
 
     args = parser.parse_args()
 
-    if args.output_dir == "":
+    if not args.output_dir:
         args.output_dir = f"/share/project/fengyupu/{args.repo_type}s"
+        print(f"Using default output dir: {args.output_dir}")
 
     output_dir = Path(args.output_dir).expanduser().resolve()
 
