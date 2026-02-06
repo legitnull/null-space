@@ -10,6 +10,9 @@ from .diagnostics import (
     print_frozen_params,
     print_device,
     print_dtype,
+    print_weight_sums,
+    print_rng_state,
+    visualize_attn_mask,
     diagnose_model,
 )
 
@@ -23,5 +26,8 @@ __all__ = [
     "print_frozen_params",
     "print_device",
     "print_dtype",
+    "print_weight_sums",
+    "print_rng_state",
+    "visualize_attn_mask",
     "diagnose_model",
 ]

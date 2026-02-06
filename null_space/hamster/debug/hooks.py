@@ -5,9 +5,21 @@ This module provides utilities to register forward and backward hooks on PyTorch
 which is useful for debugging numerical differences when porting models between frameworks.
 """
 
+import logging
 import torch
 import torch.nn as nn
 from typing import List, Optional, Set, Callable, Union
+
+# Module-level logger
+logger = logging.getLogger(__name__)
+
+# Prefix constants for log messages
+class Prefix:
+    """Log message prefixes for filtering and grepping."""
+    INIT = "INIT"   # Weight sums, initialization checks
+    FWD = "FWD"     # Forward pass hooks
+    BWD = "BWD"     # Backward pass hooks
+    STATE = "STATE" # Model state diagnostics
 
 
 def get_rank() -> int:
@@ -57,12 +69,12 @@ class DebugHooks:
             model: PyTorch model
             skip_containers: If True, only hook leaf modules (no children)
             skip_types: Set of module types to skip (default: {nn.Dropout})
-            print_fn: Custom print function (default: print with flush=True)
+            print_fn: Custom print function (default: logger.info)
         """
         self.model = model
         self.skip_containers = skip_containers
         self.skip_types = skip_types or {nn.Dropout}
-        self.print_fn = print_fn or (lambda msg: print(msg, flush=True))
+        self.print_fn = print_fn or logger.info
         self._handles: List[torch.utils.hooks.RemovableHandle] = []
 
     def _log(self, tensor: Optional[torch.Tensor], name: str, tag: str) -> None:
@@ -114,7 +126,7 @@ class DebugHooks:
         Returns:
             self for method chaining
         """
-        self.print_fn(f"[Rank {get_rank()}] Registering debug hooks...")
+        self.print_fn(f"[Rank {get_rank()}][{Prefix.INIT}] Registering debug hooks...")
 
         for name, module in self.model.named_modules():
             if not self._should_hook(module):
@@ -124,7 +136,7 @@ class DebugHooks:
             handle_bwd = module.register_full_backward_hook(self._make_backward_hook(name))
             self._handles.extend([handle_fwd, handle_bwd])
 
-        self.print_fn(f"[Rank {get_rank()}] Registered {len(self._handles)} hooks")
+        self.print_fn(f"[Rank {get_rank()}][{Prefix.INIT}] Registered {len(self._handles)} hooks")
         return self
 
     def remove(self) -> None:
@@ -132,7 +144,7 @@ class DebugHooks:
         for handle in self._handles:
             handle.remove()
         self._handles.clear()
-        self.print_fn(f"[Rank {get_rank()}] Removed debug hooks")
+        self.print_fn(f"[Rank {get_rank()}][{Prefix.INIT}] Removed debug hooks")
 
     def __enter__(self) -> "DebugHooks":
         self.register()
@@ -175,7 +187,7 @@ def remove_debug_hooks_force(model: nn.Module) -> None:
     Args:
         model: PyTorch model
     """
-    print(f"[Rank {get_rank()}] Force removing all hooks...", flush=True)
+    logger.info(f"[Rank {get_rank()}][{Prefix.INIT}] Force removing all hooks...")
 
     for module in model.modules():
         if hasattr(module, "_forward_hooks"):
@@ -187,4 +199,4 @@ def remove_debug_hooks_force(model: nn.Module) -> None:
         if hasattr(module, "_backward_pre_hooks"):
             module._backward_pre_hooks.clear()
 
-    print(f"[Rank {get_rank()}] All hooks force removed", flush=True)
+    logger.info(f"[Rank {get_rank()}][{Prefix.INIT}] All hooks force removed")
